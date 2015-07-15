@@ -279,9 +279,10 @@
     (update-records 
      (sql-expression :table table)
      :av-pairs 
-     (loop for (k v) on values by #'cddr
-	collect (list (intern (symbol-name k)) 
-		      (if (equal v "") nil v)))
+     (mapcar (lambda (x)
+	       (cons (intern (symbol-name (car x)))
+		     (if (equal (cdr x) "") nil (cdr x))))
+	     values)
      :where (sql-= (sql-expression :attribute (get-table-pkey table)) pkey))))
  
 (defun postgres-insert-id (table)
@@ -306,10 +307,10 @@
 		     (clsql-sys::make-sql-insert
 		      :into (sql-expression :table table)
 		      :av-pairs
-		      (loop for (k v) on values by #'cddr
-			 collect (list (intern (symbol-name k))
-				       (if (equal v "") nil v))))
-		     )
+		      (mapcar (lambda (x)
+				(cons (intern (symbol-name (car x)))
+				      (if (equal (cdr x) "") nil (cdr x))))
+			      values)))
 		    (format nil 
 			    " returning ~(~a~)"
 			    (get-table-pkey table))))))))
