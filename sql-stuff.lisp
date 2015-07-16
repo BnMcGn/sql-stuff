@@ -280,7 +280,7 @@
      (sql-expression :table table)
      :av-pairs 
      (mapcar (lambda (x)
-	       (cons (intern (symbol-name (car x)))
+	       (list (intern (symbol-name (car x)))
 		     (if (equal (cdr x) "") nil (cdr x))))
 	     values)
      :where (sql-= (sql-expression :attribute (get-table-pkey table)) pkey))))
@@ -308,7 +308,7 @@
 		      :into (sql-expression :table table)
 		      :av-pairs
 		      (mapcar (lambda (x)
-				(cons (intern (symbol-name (car x)))
+				(list (intern (symbol-name (car x)))
 				      (if (equal (cdr x) "") nil (cdr x))))
 			      values)))
 		    (format nil 
