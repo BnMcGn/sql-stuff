@@ -162,6 +162,7 @@
 	       key/s)))))
 
 (defun col-from-pkey (col key/s &key limit offset order-by)
+  "Given a column with table attribute, (see colm), will extrapolate the pkey column, returning records of col where pkey is one of key/s. Key/s can be a single key or a list of keys."
   (with-a-database ()
     (mapcar #'car
 	    (apply-car (col-from-pkey-query
