@@ -79,13 +79,52 @@
 	     (other< (car clause))
 	     (other< (cdr clause)))))))))
 
+(defparameter *execute-query* t)
+
+(defun query-code-p (thing)
+  "Does thing - presumably an s-expression - represent a call to a query 
+   function?"
+  (when (listp thing)
+    (member (car thing) '(select delete update))))
+
 (defun merge-query (&rest queries)
   "First query must be a full query, as its name will be used in the result query. Query fragments must start with a keyword."
-  (multiple-value-bind (cols from where other) 
-      (apply #'query-components queries)
-    `(,(caar queries) ,@cols 
-       ,@(when from (list :from (if (< 1 (length from)) from (car from))))
-       ,@(when where (list :where (apply #'sql-and where))) ,@other)))
+  (let ((q
+	 (let ((*execute-query* nil))
+	   (multiple-value-bind (cols from where other)
+	       (apply #'query-components queries)
+	     `(,(caar queries) ,@cols 
+		,@(when from 
+			(list :from (if (< 1 (length from)) from (car from))))
+		,@(when where 
+			(list :where (apply #'sql-and where))) ,@other)))))
+    (if *execute-query*
+	(apply-car q)
+	q)))
+
+(defmacro def-query ((name &rest lambda-list) &body body)
+  (with-gensyms (query)
+    (multiple-value-bind (wrapcode qcode overflow)
+	(tree-search-replace 
+	 body
+	 :key (lambda (x) (trycar 'car x)) :match 'query-marker
+	 :valuefunc (lambda (x) (if (query-code-p x)
+				    `(apply-car ,query)
+				    query)))
+      (when overflow
+	(error "Only one query-marker allowed!"))
+      (when (null qcode)
+	(setf qcode wrapcode)
+	(setf wrapcode nil))
+    `(defun ,name ,lambda-list
+       (let ((,query ,qcode))
+	 (if *execute-query*
+	     ,(if wrapcode
+		  wrapcode
+		  (if (query-code-p qcode)
+		      `(apply-car ,query)
+		      query))
+	     ,query))))))
 
 (defun add-count (query)
   (multiple-value-bind (cols mods) (divide-list query #'keywordp)
@@ -381,9 +420,14 @@
   (substitute #\_ #\- string))
 ;END borrowed
 
-;;;FIXME: postgres specific. Should use generic function?
 (defun get-table-pkey (table)
-  (with-a-database nil
+  (%get-table-pkey table *default-database*))
+
+(defgeneric %get-table-pkey (table database))
+(defmethod %get-table-pkey (table 
+			    (database clsql-postgresql:postgresql-database))
+  (declare (ignore database))
+    (with-a-database nil
       (grab-one
        (select 
 	(sql-expression :string "pg_catalog.pg_attribute.attname") 
