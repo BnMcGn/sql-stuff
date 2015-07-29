@@ -87,22 +87,28 @@
   (when (listp thing)
     (member (car thing) '(select delete update))))
 
-(defun merge-query (&rest queries)
-  "First query must be a full query, as its name will be used in the result query. Query fragments must start with a keyword."
-  (let ((q
-	 (let ((*execute-query* nil))
-	   (multiple-value-bind (cols from where other)
-	       (apply #'query-components queries)
-	     `(,(caar queries) ,@cols 
-		,@(when from 
-			(list :from (if (< 1 (length from)) from (car from))))
-		,@(when where 
-			(list :where (apply #'sql-and where))) ,@other)))))
-    (if *execute-query*
-	(apply-car q)
-	q)))
+(defun $unexecute-query (code)
+  (if (query-code-p code)
+      (list* (quote (car code)) (cdr code))
+      code))
 
-(defmacro def-query ((name &rest lambda-list) &body body)
+;Defined as macro to keep clsql queries from executing immediately
+(defmacro merge-query (&rest queries)
+  "First query must be a full query, as its name will be used in the result query. Query fragments must start with a keyword."
+  `(let ((q
+	  (let ((*execute-query* nil))
+	    (multiple-value-bind (cols from where other)
+		(apply #'query-components ,(mapcar #'$unexecute-query queries))
+	      `(,(caar queries) ,@cols 
+		 ,@(when from 
+			 (list :from (if (< 1 (length from)) from (car from))))
+		 ,@(when where 
+			 (list :where (apply #'sql-and where))) ,@other)))))
+     (if *execute-query*
+	 (apply-car q)
+	 q)))
+
+(defmacro def-query (name (&rest lambda-list) &body body)
   (with-gensyms (query)
     (multiple-value-bind (wrapcode qcode overflow)
 	(tree-search-replace 
@@ -113,18 +119,19 @@
 				    query)))
       (when overflow
 	(error "Only one query-marker allowed!"))
-      (when (null qcode)
-	(setf qcode wrapcode)
-	(setf wrapcode nil))
+      (if (null qcode)
+	(progn (setf qcode wrapcode) 
+	       (setf wrapcode nil))
+	(setf qcode (cdr qcode)))
     `(defun ,name ,lambda-list
-       (let ((,query ,qcode))
+       (let ((,query ,($unexecute-query qcode))
 	 (if *execute-query*
 	     ,(if wrapcode
 		  wrapcode
 		  (if (query-code-p qcode)
 		      `(apply-car ,query)
 		      query))
-	     ,query))))))
+	     ,query)))))))
 
 (defun add-count (query)
   (multiple-value-bind (cols mods) (divide-list query #'keywordp)
@@ -479,3 +486,29 @@
 	    text cols 
 	    :limit limit :offset offset :order-by order-by))))
  
+(def-query fulltext-search (text cols &key limit offset order-by)
+  (mapcar 
+   #'car
+   (query-marker
+    (let ((table (dolist (col (ensure-list cols))
+		   (awhen (table-from-attribute-obj col)
+		     (return it))))
+	  (clauses
+	   (collecting
+	       (dolist (col (ensure-list cols))
+		 (collect 
+		   ;FIXME: needs to escape string for safety.
+		   (sql-expression 
+		    :string
+		    (format nil "to_tsvector(~a) @@ to_tsquery('~a')"
+			    (col-from-attribute-obj col)
+			    text)))))))
+      (assert table)
+      (merge-query
+       (select 
+	(colm (get-table-pkey table))
+	:from (tabl table)
+	:where (if (< 1 (length clauses)) 
+		   (apply #'sql-or clauses)
+		   (car clauses))))))))
+
