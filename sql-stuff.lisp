@@ -18,6 +18,11 @@
 (defun tabl (table)
   (sql-expression :table table))
 
+(defun escape-sql-string (str)
+  (let ((data (split-sequence #\' str)))
+    (with-output-to-string
+	(prin
+
 (defun joinspec->whereclause (jspec)
   (join-bind jspec
     `(sql-and 
@@ -495,15 +500,24 @@
 		  (apply #'sql-or clauses)
 		  (car clauses))))))
 
-(defun fulltext-search (text cols &key limit offset order-by)
-  "Warning: doesn't create indices in database. Do so for more speed."
-  (mapcar #'car 
-	  (apply-car
-	   (fulltext-search-query 
-	    text cols 
-	    :limit limit :offset offset :order-by order-by))))
+(defgeneric %fulltext-where (text cols database)
+  (:documentation "Creates the where clause for a fulltext search of cols."))
+(defmethod %fulltext-where (text cols 
+			    (database clsql-postgresql:postgresql-database))
+  (let ((clauses
+	 (collecting
+	     (dolist (col (ensure-list cols))
+	       (collect 
+					;FIXME: needs to escape string for safety.
+		   (sql-expression 
+		    :string
+		    (format nil "to_tsvector(~a) @@ to_tsquery('~a')"
+			    (col-from-attribute-obj col)
+			    text)))))))
+
  
 (def-query fulltext-search (text cols &key limit offset order-by)
+  "Warning: doesn't create indices in database. Do so for more speed."
   (mapcar 
    #'car
    (query-marker
