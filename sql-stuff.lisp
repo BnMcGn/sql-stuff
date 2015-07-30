@@ -139,7 +139,7 @@
        (let ((,query ,(%%unexecute-query qcode)))
 	 (if *execute-query*
 	     ,(if wrapcode
-		  (car wrapcode)
+		  (list* 'progn wrapcode)
 		  (if (query-code-p qcode)
 		      `(apply-car ,query)
 		      query))
@@ -476,30 +476,6 @@
 	  (sql-expression :string "pg_catalog.pg_constraint.conrelid")
 	  (relation-oid-sql table)))))))
 
-;;;FIXME: postgres specific
-(defun fulltext-search-query (text cols &key limit offset order-by)
-  (let ((table (dolist (col (ensure-list cols))
-		 (awhen (table-from-attribute-obj col)
-		   (return it))))
-	(clauses
-	 (collecting
-	     (dolist (col (ensure-list cols))
-	       (collect 
-		   ;FIXME: needs to escape string for safety.
-		   (sql-expression 
-		    :string
-		    (format nil "to_tsvector(~a) @@ to_tsquery('~a')"
-			    (col-from-attribute-obj col)
-			    text)))))))
-    (assert table)
-    (quick-mod-query
-      (select 
-       (colm (get-table-pkey table))
-       :from (tabl table)
-       :where (if (< 1 (length clauses)) 
-		  (apply #'sql-or clauses)
-		  (car clauses))))))
-
 (defgeneric %fulltext-where (text cols database)
   (:documentation "Creates the where clause for a fulltext search of cols."))
 
@@ -531,8 +507,8 @@
       (merge-query
        (select 
 	(colm (get-table-pkey table))
-	:from (tabl table)
-	(print (%fulltext-where text cols *default-database*))
-	(limit-mixin limit offset)
-	(order-by-mixin order-by)))))))
+	:from (tabl table))
+       (%fulltext-where text cols *default-database*)
+       (limit-mixin limit offset)
+       (order-by-mixin order-by))))))
 
