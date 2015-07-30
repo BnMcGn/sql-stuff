@@ -19,9 +19,7 @@
   (sql-expression :table table))
 
 (defun escape-sql-string (str)
-  (let ((data (split-sequence #\' str)))
-    (with-output-to-string
-	(prin
+  (format nil "~{~a~^''~}" (split-sequence #\' str)))
 
 (defun joinspec->whereclause (jspec)
   (join-bind jspec
@@ -101,24 +99,26 @@
   `(let ((*execute-query* nil))
      ,@(%%unexecute-query code)))
 
+(defun %%merge-query (&rest queries)
+  (multiple-value-bind (cols from where other)
+      (apply #'query-components queries)
+    `(,@(when (query-code-p (car queries))
+	      (list (caar queries)))
+	,@cols 
+       ,@(when from 
+	       (list :from (if (< 1 (length from)) from (car from))))
+       ,@(when where 
+	       (list :where (apply #'sql-and where))) ,@other)))
+ 
 ;Defined as macro to keep clsql queries from executing immediately
 (defmacro merge-query (&rest queries)
-  "First query must be a full query, as its name will be used in the result query. Query fragments must start with a keyword."
-  (with-gensyms (query-sym)
-    `(let* ((,query-sym ,(cons 'list (mapcar #'%%unexecute-query queries)))
-	    (q
-	     (let ((*execute-query* nil))
-	       (multiple-value-bind (cols from where other)
-		   (apply #'query-components ,query-sym)
-		 `(,(caar ,query-sym) ,@cols 
-		    ,@(when from 
-			    (list :from (if (< 1 (length from)) 
-					    from (car from))))
-		    ,@(when where 
-			    (list :where (apply #'sql-and where))) ,@other)))))
-       (if *execute-query*
-	   (apply-car q)
-	   q))))
+  "Query fragments must start with a keyword."
+  `(let ((q (let ((*execute-query* nil))
+	      (apply #'%%merge-query 
+		     ,(cons 'list (mapcar #'%%unexecute-query queries))))))
+     (if (and *execute-query* (query-code-p q))
+	 (apply-car q)
+	 q)))
 
 (defmacro def-query (name (&rest lambda-list) &body body)
   (with-gensyms (query)
@@ -502,20 +502,23 @@
 
 (defgeneric %fulltext-where (text cols database)
   (:documentation "Creates the where clause for a fulltext search of cols."))
-(defmethod %fulltext-where (text cols 
-			    (database clsql-postgresql:postgresql-database))
+
+(defmethod %fulltext-where 
+    (text cols (database clsql-postgresql:postgresql-database))
   (let ((clauses
 	 (collecting
 	     (dolist (col (ensure-list cols))
 	       (collect 
-					;FIXME: needs to escape string for safety.
 		   (sql-expression 
 		    :string
 		    (format nil "to_tsvector(~a) @@ to_tsquery('~a')"
 			    (col-from-attribute-obj col)
-			    text)))))))
+			    (escape-sql-string text))))))))
+    (list :where
+	   (if (< 1 (length clauses)) 
+		   (apply #'sql-or clauses)
+		   (car clauses)))))
 
- 
 (def-query fulltext-search (text cols &key limit offset order-by)
   "Warning: doesn't create indices in database. Do so for more speed."
   (mapcar 
@@ -523,25 +526,13 @@
    (query-marker
     (let ((table (dolist (col (ensure-list cols))
 		   (awhen (table-from-attribute-obj col)
-		     (return it))))
-	  (clauses
-	   (collecting
-	       (dolist (col (ensure-list cols))
-		 (collect 
-		   ;FIXME: needs to escape string for safety.
-		   (sql-expression 
-		    :string
-		    (format nil "to_tsvector(~a) @@ to_tsquery('~a')"
-			    (col-from-attribute-obj col)
-			    text)))))))
+		     (return it)))))
       (assert table)
       (merge-query
        (select 
 	(colm (get-table-pkey table))
 	:from (tabl table)
-	:where (if (< 1 (length clauses)) 
-		   (apply #'sql-or clauses)
-		   (car clauses)))
-       (limit-mixin limit offset)
-       (order-by-mixin order-by))))))
+	(print (%fulltext-where text cols *default-database*))
+	(limit-mixin limit offset)
+	(order-by-mixin order-by)))))))
 
