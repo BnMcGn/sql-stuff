@@ -355,23 +355,22 @@
 (defgeneric %insert-record (database table values))
 (defmethod %insert-record ((database clsql-postgresql:postgresql-database)
 			   table values)
-   (values
-   (trycar 
-    'caar
-    (with-a-database ()
-      (clsql-sys:query 
-       (concatenate 'string
-		    (clsql-sys::sql-output 
-		     (clsql-sys::make-sql-insert
-		      :into (sql-expression :table table)
-		      :av-pairs
-		      (mapcar (lambda (x)
-				(list (intern (symbol-name (car x)))
-				      (if (equal (cdr x) "") nil (cdr x))))
-			      values)))
-		    (format nil 
-			    " returning ~(~a~)"
-			    (get-table-pkey table))))))))
+  (trycar 
+   'caar
+   (with-a-database ()
+     (clsql-sys:query 
+      (concatenate 'string
+		   (clsql-sys::sql-output 
+		    (clsql-sys::make-sql-insert
+		     :into (sql-expression :table table)
+		     :av-pairs
+		     (mapcar (lambda (x)
+			       (list (intern (symbol-name (car x)))
+				     (if (equal (cdr x) "") nil (cdr x))))
+			     values)))
+		   (format nil 
+			   " returning ~(~a~)"
+			   (get-table-pkey table)))))))
 
 (defun insert-record (tables values)
   (%insert-record *default-database* tables values))
