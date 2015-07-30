@@ -352,9 +352,10 @@
 	     values)
      :where (sql-= (sql-expression :attribute (get-table-pkey table)) pkey))))
 
-;;FIXME: only works with postgres. genericfunc?
-(defun insert-record (table values)
-  (values
+(defgeneric %insert-record (database table values))
+(defmethod %insert-record ((database clsql-postgresql:postgresql-database)
+			   table values)
+   (values
    (trycar 
     'caar
     (with-a-database ()
@@ -371,6 +372,9 @@
 		    (format nil 
 			    " returning ~(~a~)"
 			    (get-table-pkey table))))))))
+
+(defun insert-record (tables values)
+  (%insert-record *default-database* tables values))
 
 (defun insert-or-update (table key data)
   (print data)
