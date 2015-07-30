@@ -126,23 +126,21 @@
 	(tree-search-replace 
 	 body
 	 :key (lambda (x) (trycar 'car x)) :match 'query-marker
-	 :valuefunc (lambda (x) (if (query-code-p x)
-				    `(apply-car ,query)
-				    query)))
+	 :value `(apply-car ,query))
       (when overflow
 	(error "Only one query-marker allowed!"))
       (if (null qcode)
-	(progn (setf qcode wrapcode) 
+	(progn (setf qcode (car wrapcode)) 
 	       (setf wrapcode nil))
 	(setf qcode (cadr qcode)))
     `(defun ,name ,lambda-list
-       (let ((,query ,(%%unexecute-query qcode)))
+       (let ((,query 
+	      (let ((*execute-query* nil))
+		,(%%unexecute-query qcode))))
 	 (if *execute-query*
 	     ,(if wrapcode
-		  (list* 'progn wrapcode)
-		  (if (query-code-p qcode)
-		      `(apply-car ,query)
-		      query))
+		  `(progn ,@wrapcode)
+		  `(apply-car ,query))
 	     ,query))))))
 
 (defun add-count (query)
@@ -408,25 +406,15 @@
 	      table col
 	      :limit limit :offset offset :order-by order-by)))))
 
-(defun get-columns-query (table &rest cols)
-  (multiple-value-bind (keys cols)
-      (extract-keywords '(:limit :offset :order-by) cols)
-    (let ((cols (loop for c in cols
-		   collect (colm c)))
-	  (limit (assoc-cdr :limit keys))
-	  (offset (assoc-cdr :offset keys))
-	  (order-by (assoc-cdr :order-by keys)))
-      (quick-mod-query 
-	`(select  
-	  ,@cols
-	  :from
-	  ,(tabl table)
-	  :distinct t)))))
-
-(defun get-columns (table &rest cols)
-  (with-a-database ()
-    (apply-car 
-     (apply #'get-columns-query table cols))))
+(def-query get-columns (table &rest cols)
+    (bind-extracted-keywords (cols clean-cols :limit :offset :order-by)
+      (merge-query
+       `(select
+	 ,@(mapcar #'colm clean-cols)
+	 :from ,(tabl table)
+	 :distinct t)
+       (order-by-mixin order-by)
+       (limit-mixin limit offset))))
 
 (defun grab-one (query)
   (trycar 'caar query))
@@ -449,6 +437,7 @@
   (substitute #\_ #\- string))
 ;END borrowed
 
+;FIXME: Security on the table symbol?
 (defun get-table-pkey (table)
   (%get-table-pkey table *default-database*))
 
