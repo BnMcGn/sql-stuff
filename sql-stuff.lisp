@@ -351,16 +351,6 @@
 		     (if (equal (cdr x) "") nil (cdr x))))
 	     values)
      :where (sql-= (sql-expression :attribute (get-table-pkey table)) pkey))))
- 
-(defun postgres-insert-id (table)
-  (values
-   (trycar 
-    'caar
-    (clsql-sys:query 
-     (format 
-      nil 
-      "SELECT CURRVAL(pg_get_serial_sequence(~('~a','~a'~)));" 
-      table (get-table-pkey table))))))
 
 ;;FIXME: only works with postgres. genericfunc?
 (defun insert-record (table values)
