@@ -390,21 +390,15 @@
 	key)
       (insert-record table data)))
 
-(defun get-column-query (table col &key limit offset order-by)
-  (quick-mod-query
-    (select 
-     (sql-expression :attribute col)
-     :from
-     (sql-expression :table table)
-     :distinct t)))
-
-(defun get-column (table col &key limit offset order-by)
-  (with-a-database ()
-    (mapcar #'car 
-	    (apply-car
-	     (get-column-query 
-	      table col
-	      :limit limit :offset offset :order-by order-by)))))
+;FIXME: order-by won't work with distinct this way, at least under postgres.
+(def-query get-column (table col &key limit offset order-by)
+  (mapcar 
+   #'car
+   (query-marker
+    (merge-query
+     (select (colm col) :from (tabl table) :distinct t)
+     (limit-mixin limit offset)
+     (order-by-mixin order-by)))))
 
 (def-query get-columns (table &rest cols)
     (bind-extracted-keywords (cols clean-cols :limit :offset :order-by)
