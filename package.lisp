@@ -52,4 +52,9 @@
    #:get-columns-query
    #:fulltext-search-query
    #:get-pkeys-for-pkey-query
-   #:get-pkeys-for-pkey/chain-query))
+   #:get-pkeys-for-pkey/chain-query
+   #:query-marker
+   #:query-code-p
+   #:limit-mixin
+   #:order-by-mixin
+   #:unexecute))
