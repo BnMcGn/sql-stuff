@@ -235,25 +235,19 @@
 			col key/s :limit limit :offset offset 
 			:order-by order-by)))))
 
-(defun get-pkeys-for-pkey-query (joinspec pkey &key limit offset order-by)
-  "Gets foreign pkeys that are tied to a pkey across a many to many relation. Joinspec will tell which direction the relation is pointing"
-  (join-bind joinspec
-    (quick-mod-query 
-      (select 
-       (colm join-table fkey2) 
-       :from (tabl join-table)
-       :where (in-or-equal (colm join-table fkey1) pkey)
-       :distinct t))))
-
-(defun get-pkeys-for-pkey (joinspec pkey &key limit offset order-by)
-  "Gets foreign pkeys that are tied to a pkey across a many to many relation. Joinspec will tell which direction the relation is pointing"
-  (with-a-database ()
-    (mapcar 
-     #'car
-     (apply-car
-      (get-pkeys-for-pkey-query 
-       joinspec pkey 
-       :limit limit :offset offset :order-by order-by)))))
+(def-query get-pkeys-for-pkey (joinspec pkey &key limit offset order-by)
+  "Gets foreign pkeys that are tied to a pkey across a many to many relation. Joinspec will tell which direction the relation is pointing."
+  (mapcar
+   #'car
+   (query-marker
+    (join-bind joinspec
+      (merge-query
+       (select
+	(colm join-table fkey2)
+	:from (tabl join-table)
+	:where (in-or-equal (colm join-table fkey1) pkey)) ;:distinct t)
+       (limit-mixin limit offset)
+       (order-by-mixin order-by))))))
 
 (defun update-pkeys-for-pkey (joinspec pkey pkeys)
   (with-a-database ()
