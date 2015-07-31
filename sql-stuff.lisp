@@ -154,19 +154,6 @@
     (grab-one
      (apply-car
       (add-count query)))))
-  
-;FIXME - only finds select at caar. May need treewalker.
-(defmacro with-m2m (joinspec select)
-  `(,@(join-add select (symbol-value joinspec))))
-
-(defun add-limit (limit offset query)
-  (declare (type (or null integer) limit)
-	   (type (or null integer) offset))
-  (if (or limit offset)
-      (merge-query query
-		   `(,@(when limit (list :limit limit))
-		       ,@(when offset (list :offset offset))))
-      query))
 
 (defun limit-mixin (limit offset)
   (declare (type (or null integer) limit)
@@ -178,29 +165,8 @@
   (when orderspec
     `(:order-by ,orderspec)))
 
-(defun add-order-by (orderspec query)
-  (if orderspec
-    (merge-query query `(:order-by ,orderspec))
-    query))
-
 (defun apply-car (data)
   (apply (symbol-function (car data)) (cdr data)))
-
-(defmacro mod-query ((&rest additions) &body query)
-  "Keyword :execute, true by default, indicates if the modified query should be executed. To get the code, set it to nil."
-  (labels ((proc (clauses code)
-	     (if clauses
-		 `(,@(car clauses) ,(proc (cdr clauses) code))
-		 code)))
-    `,(proc additions (if (member (caar query) '(select delete update))
-			 `(list ',(caar query) ,@(cdar query))
-			 (car query)))))
-
-(defmacro quick-mod-query (&body query)
-  `(mod-query 
-       ((add-limit limit offset)
-	(add-order-by order-by))
-     ,@query))
 
 (defun in-or-equal (col key/s)
   (if (listp key/s)
@@ -264,7 +230,6 @@
 	   :where (sql-and 
 		   (sql-= (colm fkey1) pkey)
 		   (sql-= (colm fkey2) k2))))))))
-
 
 (defun %%build-chain (joinspecs core)
   (labels ((make-source (comparison-column)
