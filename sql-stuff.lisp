@@ -95,9 +95,9 @@
       (list* 'list `(quote ,(car code)) (cdr code))
       code))
 
-(defmacro unexecute (&body code)
+(defmacro unexecuted (&body code)
   `(let ((*execute-query* nil))
-     ,@(%%unexecute-query code)))
+     ,@(mapcar #'%%unexecute-query code)))
 
 (defun %%merge-query (&rest queries)
   (multiple-value-bind (cols from where other)
@@ -217,25 +217,22 @@
   (assert (eq (type-of attobj) 'clsql-sys:sql-ident-attribute))
   (slot-value attobj 'clsql-sys:name))
 
-(defun col-from-pkey-query (col key/s &key limit offset order-by)
-  (with-a-database ()
-    (quick-mod-query
-      (select
-       col
-       :from (table-from-attribute-obj col)
-       :where (in-or-equal 
-	       (symbolize (get-table-pkey (table-from-attribute-obj col)))
-	       key/s)))))
+(def-query col-from-pkey (col key/s &key limit offset order-by)
+    "Given a column with table attribute, (see colm), will extrapolate the pkey column, returning records of col where pkey is one of key/s. Key/s can be a single key or a list of keys."
+    (mapcar 
+     #'car
+     (query-marker
+      (merge-query
+       (select
+	col
+	:from (table-from-attribute-obj col)
+	:where (in-or-equal 
+		(symbolize (get-table-pkey (table-from-attribute-obj col)))
+		key/s))
+       (limit-mixin limit offset)
+       (order-by-mixin order-by)))))
 
-(defun col-from-pkey (col key/s &key limit offset order-by)
-  "Given a column with table attribute, (see colm), will extrapolate the pkey column, returning records of col where pkey is one of key/s. Key/s can be a single key or a list of keys."
-  (with-a-database ()
-    (mapcar #'car
-	    (apply-car (col-from-pkey-query
-			col key/s :limit limit :offset offset 
-			:order-by order-by)))))
-
-(def-query get-pkeys-for-pkey (joinspec pkey &key limit offset order-by)
+(def-query get-pkeys-for-pkey (joinspec pkey/s &key limit offset order-by)
   "Gets foreign pkeys that are tied to a pkey across a many to many relation. Joinspec will tell which direction the relation is pointing."
   (mapcar
    #'car
@@ -245,7 +242,7 @@
        (select
 	(colm join-table fkey2)
 	:from (tabl join-table)
-	:where (in-or-equal (colm join-table fkey1) pkey)) ;:distinct t)
+	:where (in-or-equal (colm join-table fkey1) pkey/s)) ;:distinct t)
        (limit-mixin limit offset)
        (order-by-mixin order-by))))))
 
@@ -268,54 +265,60 @@
 		   (sql-= (colm fkey1) pkey)
 		   (sql-= (colm fkey2) k2))))))))
 
-(defun get-pkeys-for-pkey/chain-query (joinspecs pkey 
-				       &key limit offset order-by)
-  (let* ((current (car joinspecs))
-	 (final (null (cdr joinspecs)))
-	 (climit (and final limit))
-	 (coffset (and final offset))
-	 (corder-by (and final order-by))
-	 (res
-	  (cond
-	    ((eq (type-of current) 'clsql-sys:sql-ident-attribute)
-	     (mod-query
-		 ((add-limit climit coffset)
-		  (add-order-by corder-by)
-	       (select 
-		(colm (get-table-pkey (table-from-attribute-obj current)))
-		:from (table-from-attribute-obj current)
-		:where (sql-in current (col-from-pkey current pkey))
-		:distinct t))))
-	    ((= 7 (length current)) 
-	     (get-pkeys-for-pkey-query current pkey
-	       :limit climit :offset coffset :order-by corder-by))
-	    ((= 2 (length current)) 
-	     (if (eq (type-of (car current)) 'clsql-sys:sql-ident-table)
-		 (mod-query
-		     ((add-limit climit coffset)
-		      (add-order-by corder-by)
-		   (select (sql-expression 
+
+(defun %%build-chain (joinspecs core)
+  (labels ((make-source (comparison-column)
+	     (if (null (cdr joinspecs))
+		 (in-or-equal comparison-column core)
+		 (sql-in comparison-column 
+			 (apply #'sql-query 
+				(cdr (%%build-chain (cdr joinspecs) core)))))))
+    (let ((current (car joinspecs)))
+      (cond
+	((eq (type-of current) 'clsql-sys:sql-ident-attribute)
+	 (unexecuted
+	   (select
+	    (colm (get-table-pkey (table-from-attribute-obj current)))
+	    :from (table-from-attribute-obj current)
+	    :where (make-source current)
+	    :distinct t)))
+	 ((= 7 (length current))
+	  (join-bind current
+	    (unexecuted
+	      (select
+	       (colm join-table fkey2)
+	       :from (tabl join-table)
+	       :where (make-source (colm join-table fkey1))
+	       :distinct t))))
+	 ((= 2 (length current))
+	  (if (eq (type-of (car current)) 'clsql-sys:sql-ident-table)
+	      (unexecuted
+		(select
+		 (second current)
+		 :from (table-from-attribute-obj (second current))
+		 :where (make-source 
+			 (symbolize 
+			  (get-table-pkey 
+			   (table-from-attribute-obj (second current)))))))
+	      (unexecuted
+		(select (sql-expression 
 			    :attribute 
 			    (get-table-pkey (table-from-attribute-obj 
-					     (second current))))
+					     (car current))))
 			   :from (sql-expression 
 				  :table 
-				  (table-from-attribute-obj (second current)))
-			   :where (in-or-equal (second current) pkey)
-			   :distinct t))
-		 (col-from-pkey-query (car current) pkey))))
-	    (t (error "Shouldn't be here")))))
-    (if (not final)
-	(get-pkeys-for-pkey/chain (cdr joinspecs) (apply-car res) 
-	  :limit limit :offset offset :order-by order-by)
-	res)))
+				  (table-from-attribute-obj (car current)))
+			   :where (make-source (car current))
+			   :distinct t))))
+	 (t (error "Can't handle joinspec"))))))
 
-(defun get-pkeys-for-pkey/chain (joinspecs pkey &key limit offset order-by)
-  (with-a-database ()
-    (apply-car
-     (get-pkeys-for-pkey/chain-query 
-      joinspecs pkey 
-      :limit limit :offset offset :order-by order-by))))
+(def-query get-pkeys-for-pkey/chain (joinspecs pkey &key limit offset order-by)
+  (mapcar #'car
+	  (query-marker
+	   (merge-query
+	    (%%build-chain (nreverse joinspecs) pkey)
+	    (limit-mixin limit offset)
+	    (order-by-mixin order-by)))))
 
 (defun get-record-by-pkey (table id)
   (with-a-database ()
