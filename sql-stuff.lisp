@@ -21,12 +21,6 @@
 (defun escape-sql-string (str)
   (format nil "~{~a~^''~}" (split-sequence #\' str)))
 
-(defun joinspec->whereclause (jspec)
-  (join-bind jspec
-    `(sql-and 
-      (sql-= (colm ',table1 ',pkey1) (colm ',join-table ',fkey1))
-      (sql-= (colm ',table2 ',pkey2) (colm ',join-table ',fkey2)))))
-
 ;joinspec format: table1 pkey1 jointable-fkey1 jointable jointable-fkey2 pkey2 table2
 ;this is mirror image: can be flipped for other direction
 ;example:
@@ -38,33 +32,12 @@
      (declare (ignorable table1 pkey1 fkey1 join-table fkey2 pkey2 table2))
      ,@body))
 
-(defun and-merge-where-clauses (&rest clauses)
-  (let ((items (collecting 
-	  (dolist (clause clauses)
-	    (if (eq (car clause) 'sql-and)
-		(dolist (subclause (cdr clause))
-		  (collect subclause))
-		(when clause
-		  (collect clause)))))))
-    (if (< 1 (length items))
-	(cons 'sql-and items)
-	items)))
-
-(defun join-add (select joinspec)
+(defun m2m-mixin (joinspec)
   (join-bind joinspec
-    (let 
-	((tables (keyword-value :from select))
-	 (select (copy-list select)))
-      (setf 
-       (keyword-value :from select)
-       (if (atom tables)
-	   (list tables join-table)
-	   `(list (sql-expression :table ',join-table) ,@tables)))
-      (setf
-       (keyword-value :where select)
-       (and-merge-where-clauses
-	(keyword-value :where select) (joinspec->whereclause joinspec)))
-      select)))
+    `(:where
+      (sql-and 
+       (sql-= (colm ',table1 ',pkey1) (colm ',join-table ',fkey1))
+       (sql-= (colm ',table2 ',pkey2) (colm ',join-table ',fkey2))))))
 
 (defun query-components (&rest queries)
   (with-collectors (cols< from< where< other<)
@@ -449,4 +422,3 @@
        (%fulltext-where text cols *default-database*)
        (limit-mixin limit offset)
        (order-by-mixin order-by))))))
-
