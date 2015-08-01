@@ -12,11 +12,16 @@
 
    ;query composition stuff
    #:merge-query
-   #:add-limit
-   #:add-order-by
    #:add-count
    #:apply-car
-   #:mod-query
+   #:query-marker
+   #:query-code-p
+   #:limit-mixin
+   #:order-by-mixin
+   #:escape-sql-string
+   #:unexecuted
+   #:m2m-mixin
+   #:def-query
 
    ;join stuff
    #:join-bind
@@ -45,16 +50,4 @@
    #:in-or-equal
    #:fulltext-search
    #:grab-one
-   #:get-count
-
-   ;queries for quick accessors
-   #:get-column-query
-   #:get-columns-query
-   #:fulltext-search-query
-   #:get-pkeys-for-pkey-query
-   #:get-pkeys-for-pkey/chain-query
-   #:query-marker
-   #:query-code-p
-   #:limit-mixin
-   #:order-by-mixin
-   #:unexecute))
+   #:get-count))
