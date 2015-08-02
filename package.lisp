@@ -50,4 +50,5 @@
    #:in-or-equal
    #:fulltext-search
    #:grab-one
-   #:get-count))
+   #:get-count
+   #:get-tables))

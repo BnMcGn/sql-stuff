@@ -422,3 +422,4 @@
        (%fulltext-where text cols *default-database*)
        (limit-mixin limit offset)
        (order-by-mixin order-by))))))
+
