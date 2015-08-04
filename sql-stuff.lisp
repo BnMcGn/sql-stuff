@@ -57,16 +57,17 @@
 
 (defparameter *execute-query* t)
 
-(defun query-code-p (thing)
-  "Does thing - presumably an s-expression - represent a call to a query 
+(eval-always
+  (defun query-code-p (thing)
+    "Does thing - presumably an s-expression - represent a call to a query 
    function?"
-  (when (listp thing)
-    (member (car thing) '(select delete update))))
+    (when (listp thing)
+      (member (car thing) '(select delete update))))
 
-(defun %%unexecute-query (code)
-  (if (query-code-p code)
-      (list* 'list `(quote ,(car code)) (cdr code))
-      code))
+  (defun %%unexecute-query (code)
+    (if (query-code-p code)
+	(list* 'list `(quote ,(car code)) (cdr code))
+	code)))
 
 (defmacro unexecuted (&body code)
   `(let ((*execute-query* nil))
@@ -288,24 +289,6 @@
      :where (sql-= (sql-expression :attribute (get-table-pkey table)) pkey))))
 
 (defgeneric %insert-record (database table values))
-(defmethod %insert-record ((database clsql-postgresql:postgresql-database)
-			   table values)
-  (trycar 
-   'caar
-   (with-a-database ()
-     (clsql-sys:query 
-      (concatenate 'string
-		   (clsql-sys::sql-output 
-		    (clsql-sys::make-sql-insert
-		     :into (sql-expression :table table)
-		     :av-pairs
-		     (mapcar (lambda (x)
-			       (list (intern (symbol-name (car x)))
-				     (if (equal (cdr x) "") nil (cdr x))))
-			     values)))
-		   (format nil 
-			   " returning ~(~a~)"
-			   (get-table-pkey table)))))))
 
 (defun insert-record (tables values)
   (%insert-record *default-database* tables values))
@@ -364,47 +347,9 @@
   (%get-table-pkey table *default-database*))
 
 (defgeneric %get-table-pkey (table database))
-(defmethod %get-table-pkey (table 
-			    (database clsql-postgresql:postgresql-database))
-  (declare (ignore database))
-    (with-a-database nil
-      (grab-one
-       (select 
-	(sql-expression :string "pg_catalog.pg_attribute.attname") 
-	:from (list
-	       (colm 'pg_catalog 'pg_attribute)
-	       (colm 'pg_catalog 'pg_constraint))
-	:where
-	(sql-and
-	 (sql-= (colm 'attrelid) (relation-oid-sql table))
-	 (sql-= 
-	  (sql-expression :string "pg_catalog.pg_attribute.attnum")
-	  (sql-expression 
-	   :string "pg_catalog.pg_constraint.conkey[1]"))
-	 (sql-=
-	  (sql-expression :string "pg_catalog.pg_constraint.contype") "p")
-	 (sql-=
-	  (sql-expression :string "pg_catalog.pg_constraint.conrelid")
-	  (relation-oid-sql table)))))))
 
 (defgeneric %fulltext-where (text cols database)
   (:documentation "Creates the where clause for a fulltext search of cols."))
-
-(defmethod %fulltext-where 
-    (text cols (database clsql-postgresql:postgresql-database))
-  (let ((clauses
-	 (collecting
-	     (dolist (col (ensure-list cols))
-	       (collect 
-		   (sql-expression 
-		    :string
-		    (format nil "to_tsvector(~a) @@ to_tsquery('~a')"
-			    (col-from-attribute-obj col)
-			    (escape-sql-string text))))))))
-    (list :where
-	   (if (< 1 (length clauses)) 
-		   (apply #'sql-or clauses)
-		   (car clauses)))))
 
 (def-query fulltext-search (text cols &key limit offset order-by)
   "Warning: doesn't create indices in database. Do so for more speed."
@@ -423,3 +368,14 @@
        (limit-mixin limit offset)
        (order-by-mixin order-by))))))
 
+(defun get-tables (&optional (database *default-database*))
+  (%get-tables database))
+
+(defgeneric %get-tables (database))
+(defmethod %get-tables ((database t))
+  (mapcar (lambda (x)
+	    (symbolize (car x) :package (find-package :keyword)))
+	  (select (colm 'table-name)
+		  :from (colm 'information-schema 'tables)
+		  :where (sql-and (sql-= (colm 'table-schema) "public")
+				  (sql-= (colm 'table-type) "BASE TABLE")))))

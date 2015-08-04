@@ -7,8 +7,12 @@
   :license "Specify license here"
   :depends-on (#:clsql
                #:clsql-helper
+;FIXME: Separate deps. needed for each database type.
+               #:clsql-postgresql
                #:gadgets
                #:alexandria)
   :components ((:file "package")
-               (:file "sql-stuff")))
+               (:file "sql-stuff")
+               (:file "postgresql")))
+
 
