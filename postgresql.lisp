@@ -1,3 +1,4 @@
+(in-package :sql-stuff)
 
 (defmethod %fulltext-where 
     (text cols (database clsql-postgresql:postgresql-database))
