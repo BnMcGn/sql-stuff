@@ -277,6 +277,17 @@
 				  (symbolize x :package 'keyword))
 				b) a))))
 
+(defun assocify-results (results cols)
+  (let ((keys (mapcar (lambda (x) (symbolize x :package 'keyword)) cols)))
+    (mapcar 
+     (lambda (row)
+       (pairlis keys row)) results)))
+
+(defmacro assocify (query)
+  `(multiple-value-bind (results cols)
+       ,query
+     (assocify-results results cols)))
+	
 (defun update-record (table pkey values)
   (with-a-database ()
     (update-records 

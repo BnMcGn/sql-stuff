@@ -51,4 +51,6 @@
    #:fulltext-search
    #:grab-one
    #:get-count
-   #:get-tables))
+   #:get-tables
+   #:assocify
+   #:assocify-results))
