@@ -129,6 +129,9 @@
      (apply-car
       (add-count query)))))
 
+(defun exists (query)
+  (< 0 (get-count query)))
+
 (defun limit-mixin (limit offset)
   (declare (type (or null integer) limit)
 	   (type (or null integer) offset))

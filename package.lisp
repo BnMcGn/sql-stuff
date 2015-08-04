@@ -53,4 +53,5 @@
    #:get-count
    #:get-tables
    #:assocify
-   #:assocify-results))
+   #:assocify-results
+   #:exists))
