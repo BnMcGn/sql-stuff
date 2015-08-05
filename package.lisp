@@ -54,4 +54,5 @@
    #:get-tables
    #:assocify
    #:assocify-results
-   #:exists))
+   #:exists
+   #:get-assoc-by-col))

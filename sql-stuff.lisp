@@ -280,16 +280,24 @@
 				  (symbolize x :package 'keyword))
 				b) a))))
 
-(defun assocify-results (results cols)
-  (let ((keys (mapcar (lambda (x) (symbolize x :package 'keyword)) cols)))
-    (mapcar 
-     (lambda (row)
-       (pairlis keys row)) results)))
+(eval-always
+  (defun assocify-results (results cols)
+    (let ((keys (mapcar (lambda (x) (symbolize x :package 'keyword)) cols)))
+      (mapcar 
+       (lambda (row)
+	 (pairlis keys row)) results))))
 
 (defmacro assocify (query)
   `(multiple-value-bind (results cols)
        ,query
      (assocify-results results cols)))
+
+(defun get-assoc-by-col (colspec match/es)
+  (let ((res
+	 (assocify
+	  (select '* :from (table-from-attribute-obj colspec)
+		  :where (in-or-equal colspec match/es)))))
+    (values (car res) res)))
 	
 (defun update-record (table pkey values)
   (with-a-database ()
@@ -304,8 +312,8 @@
 
 (defgeneric %insert-record (database table values))
 
-(defun insert-record (tables values)
-  (%insert-record *default-database* tables values))
+(defun insert-record (table values)
+  (%insert-record *default-database* table values))
 
 (defun insert-or-update (table key data)
   (print data)
