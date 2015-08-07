@@ -57,3 +57,10 @@
 		   (format nil 
 			   " returning ~(~a~)"
 			   (get-table-pkey table)))))))
+
+(defmethod %next-val ((database clsql-postgresql:postgresql-database)
+		      sequence) 
+  (car (query 
+	(strcat "select " 
+		(clsql-sys::sql-output (sql-function "nextval" sequence)))
+	:flatp t)))

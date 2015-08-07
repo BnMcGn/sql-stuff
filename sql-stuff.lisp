@@ -277,12 +277,12 @@
 	 (multiple-value-bind (a b)
 		    (get-record-by-pkey table id)
 		  (list (mapcar (lambda (x) 
-				  (symbolize x :package 'keyword))
+				  (keywordize-foreign x))
 				b) a))))
 
 (eval-always
   (defun assocify-results (results cols)
-    (let ((keys (mapcar (lambda (x) (symbolize x :package 'keyword)) cols)))
+    (let ((keys (mapcar (lambda (x) (keywordize-foreign x)) cols)))
       (mapcar 
        (lambda (row)
 	 (pairlis keys row)) results))))
@@ -298,7 +298,11 @@
 	  (select '* :from (table-from-attribute-obj colspec)
 		  :where (in-or-equal colspec match/es)))))
     (values (car res) res)))
-	
+
+(defgeneric %next-val (database sequence))
+(defun next-val (sequence)
+  (%next-val *default-database* sequence))
+
 (defun update-record (table pkey values)
   (with-a-database ()
     (update-records 

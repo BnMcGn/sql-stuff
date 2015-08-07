@@ -55,4 +55,5 @@
    #:assocify
    #:assocify-results
    #:exists
-   #:get-assoc-by-col))
+   #:get-assoc-by-col
+   #:next-val))
