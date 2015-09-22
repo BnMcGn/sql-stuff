@@ -8,7 +8,8 @@
   :depends-on (#:clsql
                #:clsql-helper
 ;FIXME: Separate deps. needed for each database type.
-               #:clsql-postgresql
+               ;#:clsql-postgresql
+               #:clsql-postgresql-socket3 ;See note in postgresql.lisp
                #:gadgets
                #:alexandria)
   :components ((:file "package")

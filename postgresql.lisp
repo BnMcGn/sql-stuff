@@ -1,7 +1,12 @@
 (in-package :sql-stuff)
 
+;;;FIXME: sql-stuff is currently only compatible with postgresql-socket3, not the
+;;; plain driver. Defmethod can only specialize on one type at a time, so for now
+;;; that is postgresql-socket3. Homework: find a way to get two types to
+;;; dispatch to a single method. Don't want to write everything twice!
+
 (defmethod %fulltext-where 
-    (text cols (database clsql-postgresql:postgresql-database))
+    (text cols (database clsql-postgresql-socket3:postgresql-socket3-database))
   (let ((clauses
 	 (collecting
 	     (dolist (col (ensure-list cols))
@@ -17,7 +22,7 @@
 		   (car clauses)))))
 
 (defmethod %get-table-pkey (table 
-			    (database clsql-postgresql:postgresql-database))
+			    (database clsql-postgresql-socket3:postgresql-socket3-database))
   (declare (ignore database))
     (with-a-database nil
       (grab-one
@@ -39,7 +44,8 @@
 	  (sql-expression :string "pg_catalog.pg_constraint.conrelid")
 	  (relation-oid-sql table)))))))
 
-(defmethod %insert-record ((database clsql-postgresql:postgresql-database)
+(defmethod %insert-record
+    ((database clsql-postgresql-socket3:postgresql-socket3-database)
 			   table values)
   (trycar 
    'caar
@@ -58,7 +64,8 @@
 			   " returning ~(~a~)"
 			   (get-table-pkey table)))))))
 
-(defmethod %next-val ((database clsql-postgresql:postgresql-database)
+(defmethod %next-val
+    ((database clsql-postgresql-socket3:postgresql-socket3-database)
 		      sequence) 
   (car (query 
 	(strcat "select " 
