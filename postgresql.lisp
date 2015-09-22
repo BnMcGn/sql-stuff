@@ -5,6 +5,8 @@
 ;;; that is postgresql-socket3. Homework: find a way to get two types to
 ;;; dispatch to a single method. Don't want to write everything twice!
 
+;;; clsql-postgresql:postgresql-database
+
 (defmethod %fulltext-where 
     (text cols (database clsql-postgresql-socket3:postgresql-socket3-database))
   (let ((clauses

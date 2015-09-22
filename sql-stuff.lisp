@@ -268,7 +268,9 @@
 	(select (sql-expression :attribute '*) 
 		:from (sql-expression :table table)
 		:where (sql-= 
-			(sql-expression :attribute (get-table-pkey table)) 
+            (sql-expression :attribute
+                            (or (get-table-pkey table)
+                                (error "Table has no pkey column."))) 
 			id))
       (car data) labels)))
 
