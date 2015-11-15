@@ -7,8 +7,7 @@
 
 ;;; clsql-postgresql:postgresql-database
 
-(defmethod %fulltext-where 
-    (text cols (database clsql-postgresql-socket3:postgresql-socket3-database))
+(defmethod %fulltext-where (text cols (database (eql :postgresql)))
   (let ((clauses
 	 (collecting
 	     (dolist (col (ensure-list cols))
@@ -23,8 +22,7 @@
 		   (apply #'sql-or clauses)
 		   (car clauses)))))
 
-(defmethod %get-table-pkey (table 
-			    (database clsql-postgresql-socket3:postgresql-socket3-database))
+(defmethod %get-table-pkey (table (database (eql :postgresql)))
   (declare (ignore database))
     (with-a-database nil
       (grab-one
@@ -46,9 +44,7 @@
 	  (sql-expression :string "pg_catalog.pg_constraint.conrelid")
 	  (relation-oid-sql table)))))))
 
-(defmethod %insert-record
-    ((database clsql-postgresql-socket3:postgresql-socket3-database)
-			   table values)
+(defmethod %insert-record ((database (eql :postgresql)) table values)
   (trycar 
    'caar
    (with-a-database ()
@@ -66,10 +62,49 @@
 			   " returning ~(~a~)"
 			   (get-table-pkey table)))))))
 
-(defmethod %next-val
-    ((database clsql-postgresql-socket3:postgresql-socket3-database)
-		      sequence) 
+(defmethod %next-val ((database (eql :postgresql)) sequence) 
   (car (query 
 	(strcat "select " 
 		(clsql-sys::sql-output (sql-function "nextval" sequence)))
 	:flatp t)))
+
+
+
+(defmethod %fulltext-where 
+    (text cols (database clsql-postgresql-socket3:postgresql-socket3-database))
+  (%fulltext-where text cols :postgresql))
+
+(defmethod %get-table-pkey
+    (table
+     (database clsql-postgresql-socket3:postgresql-socket3-database))
+  (%get-table-pkey table :postgresql))
+
+(defmethod %insert-record
+    ((database clsql-postgresql-socket3:postgresql-socket3-database)
+     table values)
+  (%insert-record :postgresql table values))
+
+(defmethod %next-val
+    ((database clsql-postgresql-socket3:postgresql-socket3-database)
+     sequence)
+  (%next-val :postgresql sequence))
+
+(defmethod %fulltext-where 
+    (text cols (database clsql-postgresql:postgresql-database))
+  (%fulltext-where text cols :postgresql))
+
+(defmethod %get-table-pkey
+    (table
+     (database clsql-postgresql:postgresql-database))
+  (%get-table-pkey table :postgresql))
+
+(defmethod %insert-record
+    ((database clsql-postgresql:postgresql-database)
+     table values)
+  (%insert-record :postgresql table values))
+
+  (defmethod %next-val
+      ((database clsql-postgresql:postgresql-database)
+       sequence)
+    (%next-val :postgresql sequence))
+
