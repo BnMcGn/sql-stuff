@@ -43,7 +43,7 @@
   (with-collectors (cols< from< where< other<)
     (dolist (query queries)
       (multiple-value-bind (cols specs) 
-	  (divide-list query #'keywordp)
+	  (divide-list #'keywordp query)
 	(mapc #'cols< (cdr cols))
 	(dolist (clause (keyword-splitter specs))
 	  (case (car clause)
@@ -118,7 +118,7 @@
 	     ,query))))))
 
 (defun add-count (query)
-  (multiple-value-bind (cols mods) (divide-list query #'keywordp)
+  (multiple-value-bind (cols mods) (divide-list #'keywordp query)
     `(,(car cols)
        ,(apply #'sql-count (cdr cols))
        ,@mods)))
