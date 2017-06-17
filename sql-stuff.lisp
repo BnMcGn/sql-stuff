@@ -88,11 +88,11 @@
 (defmacro merge-query (&rest queries)
   "Query fragments must start with a keyword."
   `(let ((q (let ((*execute-query* nil))
-	      (apply #'%%merge-query 
-		     ,(cons 'list (mapcar #'%%unexecute-query queries))))))
+              (apply #'%%merge-query
+                     ,(cons 'list (mapcar #'%%unexecute-query queries))))))
      (if (and *execute-query* (query-code-p q))
-	 (apply-car q)
-	 q)))
+         (apply-car q)
+         q)))
 
 (defmacro def-query (name (&rest lambda-list) &body body)
   (with-gensyms (query)
@@ -130,6 +130,8 @@
       (add-count query)))))
 
 (defun exists (query)
+  (unless query
+    (error "Query can't be NIL"))
   (< 0 (get-count query)))
 
 (defun limit-mixin (limit offset)
