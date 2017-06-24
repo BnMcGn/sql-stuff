@@ -4,22 +4,55 @@
 
 ;;; "sql-stuff" goes here. Hacks and glory await!
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
+(eval-always
   (disable-sql-reader-syntax) ;do a full reset
   (enable-sql-reader-syntax))
 
-(defun colm (table-or-column &optional (column nil))
+(eval-always
+  (defgeneric sql-escape (item))
+  (defmethod sql-escape ((item string))
+    (format nil "~{~a~^''~}" (split-sequence #\' item)))
+  (defmethod sql-escape ((item number))
+    item)
+
+  (defun escape-error (item)
+    (if (find #\' (mkstr item))
+        (error "Possible SQL injection attempt! Strange single quote observed.")
+        item))
+
+  (defun macro-checkable-p (itm)
+    "Determine if the macro can safety check itm at compile time"
+    (or (not itm)
+        (stringp itm)
+        (keywordp itm)
+        (and (consp itm)
+             (eq 'quote (car itm))
+             (symbolp (second itm)))))
+
+  (defun check-sql-form (form)
+    (if (macro-checkable-p form)
+        (if (consp form)
+            (progn
+              (escape-error (second form))
+              form)
+            (escape-error form))
+        `(escape-error ,form))))
+
+(defun %colm (table-or-column column)
   (if column
       (sql-expression
        :table table-or-column
        :attribute column)
       (sql-expression :attribute table-or-column)))
 
-(defun tabl (table)
+(defmacro colm (table-or-column &optional (column nil))
+  `(%colm ,(check-sql-form table-or-column) ,(check-sql-form column)))
+
+(defun %tabl (table)
   (sql-expression :table table))
 
-(defun sql-escape (str)
-  (format nil "~{~a~^''~}" (split-sequence #\' str)))
+(defmacro tabl (table)
+  `(%tabl ,(check-sql-form table)))
 
 ;;joinspec format: table1 pkey1 jointable-fkey1 jointable jointable-fkey2 pkey2 table2
 ;;this is mirror image: can be flipped for other direction
