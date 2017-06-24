@@ -16,7 +16,7 @@
         :string
         (format nil "to_tsvector(~a) @@ to_tsquery('~a')"
           (col-from-attribute-obj col)
-          (escape-sql-string text))))))))
+          (sql-escape text))))))))
     (list :where
      (if (< 1 (length clauses))
        (apply #'sql-or clauses)

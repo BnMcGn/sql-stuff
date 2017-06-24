@@ -18,10 +18,10 @@
    #:query-code-p
    #:limit-mixin
    #:order-by-mixin
-   #:escape-sql-string
    #:unexecuted
    #:m2m-mixin
    #:def-query
+   #:sql-escape
 
    ;join stuff
    #:join-bind
