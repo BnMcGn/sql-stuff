@@ -378,7 +378,7 @@
   (bind-extracted-keywords (cols clean-cols :limit :offset :order-by)
     (merge-query
      `(select
-       ,@(mapcar #'colm clean-cols)
+       ,@(mapcar (lambda (x) (colm x)) clean-cols)
        :from ,(tabl table)
        :distinct t)
      (order-by-mixin order-by)
