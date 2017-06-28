@@ -22,6 +22,7 @@
    #:m2m-mixin
    #:def-query
    #:sql-escape
+   #:escape-error
 
    ;join stuff
    #:join-bind

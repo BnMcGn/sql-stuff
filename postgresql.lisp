@@ -52,10 +52,10 @@
       (concatenate 'string
                    (clsql-sys::sql-output
                     (clsql-sys::make-sql-insert
-                     :into (sql-expression :table table)
+                     :into (tabl table)
                      :av-pairs
                      (mapcar (lambda (x)
-                               (list (intern (symbol-name (car x)))
+                               (list (escape-error (car x))
                                      (if (equal (cdr x) "") nil (cdr x))))
                              values)))
                    (format nil

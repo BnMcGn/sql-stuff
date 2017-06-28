@@ -170,33 +170,35 @@
 (defun limit-mixin (limit offset)
   (declare (type (or null integer) limit)
            (type (or null integer) offset))
-  `(,@(when limit (list :limit limit))
-      ,@(when offset (list :offset offset))))
+  `(,@(when limit (list :limit (sql-escape limit)))
+      ,@(when offset (list :offset (sql-escape offset)))))
 
 (defun order-by-mixin (orderspec)
   (when orderspec
-    `(:order-by ,orderspec)))
+    `(:order-by ,(sql-escape orderspec))))
 
 (defun apply-car (data)
   (apply (symbol-function (car data)) (cdr data)))
 
 (defun in-or-equal (col key/s)
   (if (listp key/s)
-      (sql-in col key/s)
-      (sql-= col key/s)))
+      (sql-in col (mapcar #'sql-escape key/s))
+      (sql-= col (sql-escape key/s))))
 
 (defun table-from-attribute-obj (attobj)
-  (case (type-of attobj)
-    (clsql-sys:sql-ident-table (slot-value attobj 'clsql-sys:name))
-    (clsql-sys:sql-ident-attribute (slot-value attobj 'clsql-sys::qualifier))
-    (otherwise (error "Can't get table name"))))
+  (escape-error
+   (case (type-of attobj)
+     (clsql-sys:sql-ident-table (slot-value attobj 'clsql-sys:name))
+     (clsql-sys:sql-ident-attribute (slot-value attobj 'clsql-sys::qualifier))
+     (otherwise (error "Can't get table name")))))
 
 (defun col-from-attribute-obj (attobj)
   (assert (eq (type-of attobj) 'clsql-sys:sql-ident-attribute))
-  (slot-value attobj 'clsql-sys:name))
+  (escape-error (slot-value attobj 'clsql-sys:name)))
 
 (def-query col-from-pkey (col key/s &key limit offset order-by)
   "Given a column with table attribute, (see colm), will extrapolate the pkey column, returning records of col where pkey is one of key/s. Key/s can be a single key or a list of keys."
+  ;;FIXME: col *should* be escaped, but...
   (mapcar
    #'car
    (query-marker
@@ -227,7 +229,8 @@
 (defun update-pkeys-for-pkey (joinspec pkey pkeys)
   (with-a-database ()
     (join-bind joinspec
-      (let* ((pkeys (mapcar #'string-unless-number pkeys))
+      (let* ((pkey (sql-escape pkey))
+             (pkeys (mapcar #'string-unless-number pkeys))
              (oldpkeys (get-pkeys-for-pkey joinspec pkey))
              (newkeys (set-difference pkeys oldpkeys :test #'equal))
              (remkeys (set-difference oldpkeys pkeys :test #'equal)))
@@ -235,7 +238,7 @@
           (insert-records
            :into (tabl join-table)
            :attributes (list (colm fkey1) (colm fkey2))
-           :values (list pkey k)))
+           :values (list pkey (sql-escape k))))
         (dolist (k2 remkeys)
           (delete-records
            :from (tabl join-table)
@@ -293,7 +296,7 @@
   (mapcar #'car
           (query-marker
            (merge-query
-            (%%build-chain (nreverse joinspecs) pkey)
+            (%%build-chain (nreverse joinspecs) (sql-escape pkey))
             (limit-mixin limit offset)
             (order-by-mixin order-by)))))
 
@@ -301,12 +304,12 @@
   (with-a-database ()
     (multiple-value-passthru (data labels)
         (select (sql-expression :attribute '*)
-                :from (sql-expression :table table)
+                :from (tabl table)
                 :where (sql-=
                         (sql-expression :attribute
                                         (or (get-table-pkey table)
                                             (error "Table has no pkey column.")))
-                        id))
+                        (sql-escape id)))
       (car data) labels)))
 
 (defun get-assoc-by-pkey (table id)
@@ -343,13 +346,14 @@
 (defun update-record (table pkey values)
   (with-a-database ()
     (update-records
-     (sql-expression :table table)
+     (tabl table)
      :av-pairs
      (mapcar (lambda (x)
-               (list (intern (symbol-name (car x)))
+               (list (sql-escape (car x))
                      (if (equal (cdr x) "") nil (cdr x))))
              values)
-     :where (sql-= (sql-expression :attribute (get-table-pkey table)) pkey))))
+     :where (sql-= (tabl (get-table-pkey table))
+                   (sql-escape pkey)))))
 
 (defgeneric %insert-record (database table values))
 
@@ -399,7 +403,8 @@
   (declare (type (or symbol string) table))
   (ensure-strings (table)
     (sql-expression :string
-                    (format nil "'~A'::regclass" (normalize-for-sql table)))))
+                    (format nil "'~A'::regclass" (escape-error
+                                                  (normalize-for-sql table))))))
 
 (defun normalize-for-sql (string)
   (substitute #\_ #\- string))
