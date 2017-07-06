@@ -14,6 +14,8 @@
     (format nil "~{~a~^''~}" (split-sequence #\' item)))
   (defmethod sql-escape ((item number))
     item)
+  (defmethod sql-escape ((item t))
+    item)
 
   (defun escape-error (item)
     (if (find #\' (mkstr item))
@@ -76,7 +78,7 @@
   (with-collectors (cols< from< where< other<)
     (dolist (query queries)
       (multiple-value-bind (cols specs)
-          (divide-list #'keywordp query)
+          (divide-on-true #'keywordp query)
         (mapc #'cols< (cdr cols))
         (dolist (clause (keyword-splitter specs))
           (case (car clause)
@@ -151,7 +153,7 @@
                ,query))))))
 
 (defun add-count (query)
-  (multiple-value-bind (cols mods) (divide-list #'keywordp query)
+  (multiple-value-bind (cols mods) (divide-on-true #'keywordp query)
     `(,(car cols)
        ,(apply #'sql-count (cdr cols))
        ,@mods)))
