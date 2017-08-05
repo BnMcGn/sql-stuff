@@ -57,4 +57,5 @@
    #:assocify-results
    #:exists
    #:get-assoc-by-col
-   #:next-val))
+   #:next-val
+   #:sql-equal/null))

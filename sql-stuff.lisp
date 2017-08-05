@@ -449,3 +449,9 @@
                   :from (colm 'information-schema 'tables)
                   :where (sql-and (sql-= (colm 'table-schema) "public")
                                   (sql-= (colm 'table-type) "BASE TABLE")))))
+
+(defun sql-equal/null (col val)
+  "Because col = null doesn't work in SQL. Use if val may be nil."
+  (if val
+      (sql-= col val)
+      (sql-is col nil)))
