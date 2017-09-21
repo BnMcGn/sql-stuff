@@ -207,7 +207,7 @@
     (merge-query
      (select
       col
-      :from (table-from-attribute-obj col)
+      :from (colm (table-from-attribute-obj col))
       :where (in-or-equal
               (symbolize (get-table-pkey (table-from-attribute-obj col)))
               key/s))
@@ -261,7 +261,7 @@
          (unexecuted
            (select
             (colm (get-table-pkey (table-from-attribute-obj current)))
-            :from (table-from-attribute-obj current)
+            :from (tabl (table-from-attribute-obj current))
             :where (make-source current)
             :distinct t)))
         ((= 7 (length current))
