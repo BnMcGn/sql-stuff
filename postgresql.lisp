@@ -58,9 +58,8 @@
                                (list (escape-error (car x))
                                      (if (equal (cdr x) "") nil (cdr x))))
                              values)))
-                   (format nil
-                           " returning ~(~a~)"
-                           (get-table-pkey table)))))))
+                   (when-let ((pcol (get-table-pkey table)))
+                     (format nil " returning ~(~a~)" pcol)))))))
 
 (defmethod %next-val ((database (eql :postgresql)) sequence)
   (car (query
