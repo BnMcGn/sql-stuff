@@ -58,4 +58,5 @@
    #:exists
    #:get-assoc-by-col
    #:next-val
-   #:sql-equal/null))
+   #:sql-equal/null
+   #:insert-plist))

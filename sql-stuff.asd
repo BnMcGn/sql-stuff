@@ -11,6 +11,7 @@
                #:clsql-postgresql
                #:clsql-postgresql-socket3 ;See note in postgresql.lisp
                #:gadgets
+               #:cl-hash-util
                #:alexandria)
   :components ((:file "package")
                (:file "sql-stuff")

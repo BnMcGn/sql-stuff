@@ -362,8 +362,13 @@
 (defun insert-record (table values)
   (%insert-record *default-database* table values))
 
+(defun insert-plist (table values)
+  (insert-record
+   table
+   (map-by-2 (lambda (k v) (cons (if (or (stringp k) (symbolp k)) (colm k) k) v))
+             values)))
+
 (defun insert-or-update (table key data)
-  (print data)
   (if key
       (progn
         (update-record table key data)
