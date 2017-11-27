@@ -318,6 +318,8 @@
   (apply #'pairlis
          (multiple-value-bind (a b)
              (get-record-by-pkey table id)
+           (unless a
+             (error "Record not found"))
            (list (mapcar (lambda (x)
                            (keywordize-foreign x))
                          b) a))))
