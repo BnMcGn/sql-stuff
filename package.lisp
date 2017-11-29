@@ -59,4 +59,6 @@
    #:get-assoc-by-col
    #:next-val
    #:sql-equal/null
-   #:insert-plist))
+   #:insert-plist
+   #:colms
+   #:get-table-columns))

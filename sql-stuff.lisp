@@ -50,6 +50,9 @@
 (defmacro colm (table-or-column &optional (column nil))
   `(%colm ,(check-sql-form table-or-column) ,(check-sql-form column)))
 
+(defmacro colms (&rest columns)
+  `(list ,@(mapcar (lambda (col) `(%colm ,(check-sql-form col) nil)) columns)))
+
 (defun %tabl (table)
   (sql-expression :table table))
 
@@ -359,6 +362,7 @@
      :where (sql-= (tabl (get-table-pkey table))
                    (sql-escape pkey)))))
 
+
 (defgeneric %insert-record (database table values))
 
 (defun insert-record (table values)
@@ -456,6 +460,10 @@
                   :from (colm 'information-schema 'tables)
                   :where (sql-and (sql-= (colm 'table-schema) "public")
                                   (sql-= (colm 'table-type) "BASE TABLE")))))
+
+(defgeneric %get-table-columns (table database))
+(defun get-table-columns (table)
+  (%get-table-columns table (database *default-database*)))
 
 (defun sql-equal/null (col val)
   "Because col = null doesn't work in SQL. Use if val may be nil."
