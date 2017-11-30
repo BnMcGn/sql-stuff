@@ -44,6 +44,32 @@
         (sql-expression :string "pg_catalog.pg_constraint.conrelid")
         (relation-oid-sql table)))))))
 
+(defmethod %get-table-columns ((database (eql :postgresql)) table)
+  (declare (ignore database))
+  (with-a-database ()
+    (select (colms 'column_name 'data_type)
+            :from (colm 'information_schema 'columns)
+            :where (sql-= (colm 'table_name) table))))
+
+;select column_name,data_type 
+;from information_schema.columns 
+;where table_name = 'table_name';
+SELECT
+        a.attname as "Column",
+        pg_catalog.format_type(a.atttypid, a.atttypmod) as "Datatype"
+    FROM
+        pg_catalog.pg_attribute a
+    WHERE
+        a.attnum > 0
+        AND NOT a.attisdropped
+        AND a.attrelid = (
+            SELECT c.oid
+            FROM pg_catalog.pg_class c
+                LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            WHERE c.relname ~ '^(hello world)$'
+                AND pg_catalog.pg_table_is_visible(c.oid)
+        );
+
 (defmethod %insert-record ((database (eql :postgresql)) table values)
   (trycar
    'caar
@@ -88,6 +114,10 @@
      sequence)
   (%next-val :postgresql sequence))
 
+(defmethod %get-table-columns
+    ((database clsql-postgresql-socket3:postgresql-socket3-database)
+     table)
+  (%get-table-columns :postgresql table))
 
 
 (defmethod %fulltext-where
@@ -108,3 +138,8 @@
     ((database clsql-postgresql:postgresql-database)
      sequence)
   (%next-val :postgresql sequence))
+
+(defmethod %get-table-columns
+    ((database clsql-postgresql:postgresql-database)
+     table)
+  (%get-table-columns :postgresql table))
