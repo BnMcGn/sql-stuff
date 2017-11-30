@@ -59,6 +59,14 @@
 (defmacro tabl (table)
   `(%tabl ,(check-sql-form table)))
 
+(defgeneric table-symbol (table-repr)
+  (:method ((table-repr symbol)) table-repr)
+  (:method ((table-repr string)) (intern table-repr 'keyword))
+  (:method ((table-repr clsql-sys:sql-ident-attribute))
+    (slot-value table-repr 'clsql-sys::qualifier))
+  (:method ((table-repr clsql-sys:sql-ident-table))
+    (slot-value table-repr 'clsql-sys::name)))
+
 ;;joinspec format: table1 pkey1 jointable-fkey1 jointable jointable-fkey2 pkey2 table2
 ;;this is mirror image: can be flipped for other direction
 ;;example:
