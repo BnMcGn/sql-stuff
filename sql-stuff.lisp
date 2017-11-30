@@ -461,9 +461,9 @@
                   :where (sql-and (sql-= (colm 'table-schema) "public")
                                   (sql-= (colm 'table-type) "BASE TABLE")))))
 
-(defgeneric %get-table-columns (table database))
+(defgeneric %get-table-columns (database table))
 (defun get-table-columns (table)
-  (%get-table-columns table (database *default-database*)))
+  (%get-table-columns *default-database* table))
 
 (defun sql-equal/null (col val)
   "Because col = null doesn't work in SQL. Use if val may be nil."

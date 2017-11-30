@@ -46,29 +46,32 @@
 
 (defmethod %get-table-columns ((database (eql :postgresql)) table)
   (declare (ignore database))
-  (with-a-database ()
-     (select
-      (sql-expression :string "a.attname")
-      (sql-expression :string "pg_catalog.format_type(a.atttypid, a.atttypmod)")
-      :from (sql-expression :string "pg_catalog.pg_attribute a")
-      :where
-      (sql-and
-       (sql-> (colm 'a 'attnum) 0)
-       (sql-not (colm 'a 'attisdropped))
-       (sql-=
-        (colm 'a 'attrelid)
-        (sql-query
-         (colm 'c 'oid)
-         :from
-         (sql-expression
-          :string
-          "pg_catalog.pg_class c left join pg_catalog.pg_namespace n on n.oid = c.relnamespace")
-         :where (sql-and
-                 (sql-expression
-                  :string
-                  (format nil "c.relname = '~a'" (to-lowercase (sql-escape (mkstr table)))))
-                 (sql-expression :string
-                                 "pg_catalog.pg_table_is_visible(c.oid)"))))))))
+  (let ((res
+         (with-a-database ()
+              (select
+               (sql-expression :string "a.attname")
+               (sql-expression :string "pg_catalog.format_type(a.atttypid, a.atttypmod)")
+               :from (sql-expression :string "pg_catalog.pg_attribute a")
+               :where
+               (sql-and
+                (sql-> (colm 'a 'attnum) 0)
+                (sql-not (colm 'a 'attisdropped))
+                (sql-=
+                 (colm 'a 'attrelid)
+                 (sql-query
+                  (colm 'c 'oid)
+                  :from
+                  (sql-expression
+                   :string
+                   "pg_catalog.pg_class c left join pg_catalog.pg_namespace n on n.oid = c.relnamespace")
+                  :where (sql-and
+                          (sql-expression
+                           :string
+                           (format nil "c.relname = '~a'"
+                                   (to-lowercase (sql-escape (mkstr table)))))
+                          (sql-expression :string
+                                          "pg_catalog.pg_table_is_visible(c.oid)")))))))))
+    (values-list (apply #'mapcar (lambda (&rest x) x) res))))
 
 (defmethod %insert-record ((database (eql :postgresql)) table values)
   (trycar
