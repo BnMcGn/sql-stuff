@@ -50,7 +50,6 @@
    #:col-from-pkey
    #:in-or-equal
    #:fulltext-search
-   #:grab-one
    #:get-count
    #:get-tables
    #:assocify
@@ -61,4 +60,6 @@
    #:sql-equal/null
    #:insert-plist
    #:colms
-   #:get-table-columns))
+   #:get-table-columns
+   #:table-symbol
+   #:take-one))

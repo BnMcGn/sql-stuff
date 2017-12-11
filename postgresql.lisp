@@ -25,7 +25,7 @@
 (defmethod %get-table-pkey (table (database (eql :postgresql)))
   (declare (ignore database))
   (with-a-database nil
-    (grab-one
+    (take-one
      (select
       (sql-expression :string "pg_catalog.pg_attribute.attname")
       :from (list

@@ -60,6 +60,7 @@
   `(%tabl ,(check-sql-form table)))
 
 (defgeneric table-symbol (table-repr)
+  (:documentation "Coerces table representation into a symbol")
   (:method ((table-repr symbol)) table-repr)
   (:method ((table-repr string)) (intern table-repr 'keyword))
   (:method ((table-repr clsql-sys:sql-ident-attribute))
@@ -171,7 +172,7 @@
 
 (defun get-count (query)
   (with-a-database ()
-    (grab-one
+    (take-one
      (apply-car
       (add-count query)))))
 
@@ -409,7 +410,7 @@
      (order-by-mixin order-by)
      (limit-mixin limit offset))))
 
-(defun grab-one (query)
+(defun take-one (query)
   (trycar 'caar query))
 
 ;;; borrowed from clsql-pg-introspect
@@ -433,7 +434,7 @@
 
 ;;FIXME: Security on the table symbol?
 (defun get-table-pkey (table)
-  (%get-table-pkey table *default-database*))
+  (%get-table-pkey (table-symbol table) *default-database*))
 
 (defgeneric %get-table-pkey (table database))
 
