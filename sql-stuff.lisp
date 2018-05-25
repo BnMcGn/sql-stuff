@@ -196,7 +196,7 @@
 
 (defun in-or-equal (col key/s)
   (if (listp key/s)
-      (sql-in col (mapcar #'sql-escape key/s))
+      (apply #'sql-in col (mapcar #'sql-escape key/s))
       (sql-= col (sql-escape key/s))))
 
 (defun table-from-attribute-obj (attobj)
