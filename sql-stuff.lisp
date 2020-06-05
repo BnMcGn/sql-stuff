@@ -360,6 +360,7 @@
   (%next-val *default-database* sequence))
 
 (defun update-record (table pkey values)
+  "Table is a symbol, values is an alist of (column object . value) pairs"
   (with-a-database ()
     (update-records
      (tabl table)
