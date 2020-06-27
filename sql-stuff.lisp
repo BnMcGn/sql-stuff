@@ -144,7 +144,7 @@
 (defmacro def-query (name (&rest lambda-list) &body body)
   (with-gensyms (query)
     (multiple-value-bind (wrapcode qcode overflow)
-        (tree-search-replace
+        (proto:tree-search-replace
          body
          :key (lambda (x) (trycar 'car x)) :match 'query-marker
          :value `(apply-car ,query))
