@@ -11,7 +11,7 @@
 (eval-always
   (defgeneric sql-escape (item))
   (defmethod sql-escape ((item string))
-    (format nil "~{~a~^''~}" (split-sequence #\' item)))
+    (format nil "~{~a~^''~}" (cl-utilities:split-sequence #\' item)))
   (defmethod sql-escape ((item number))
     item)
   (defmethod sql-escape ((item t))
@@ -87,12 +87,12 @@
        (sql-= (colm ',table2 ',pkey2) (colm ',join-table ',fkey2))))))
 
 (defun query-components (&rest queries)
-  (with-collectors (cols< from< where< other<)
+  (cl-utilities:with-collectors (cols< from< where< other<)
     (dolist (query queries)
       (multiple-value-bind (cols specs)
           (divide-on-true #'keywordp query)
         (mapc #'cols< (cdr cols))
-        (dolist (clause (keyword-splitter specs))
+        (dolist (clause (proto:keyword-splitter specs))
           (case (car clause)
             (:from
              (mapc #'from< (ensure-list (cdr clause))))
@@ -316,7 +316,7 @@
 
 (defun get-record-by-pkey (table id)
   (with-a-database ()
-    (multiple-value-passthru (data labels)
+    (multiple-value-bind (data labels)
         (select (sql-expression :attribute '*)
                 :from (tabl table)
                 :where (sql-=
@@ -324,7 +324,7 @@
                                         (or (get-table-pkey table)
                                             (error "Table has no pkey column.")))
                         (sql-escape id)))
-      (car data) labels)))
+      (values (car data) labels))))
 
 (defun get-assoc-by-pkey (table id)
   (apply #'pairlis
@@ -333,12 +333,12 @@
            (unless a
              (error "Record not found"))
            (list (mapcar (lambda (x)
-                           (keywordize-foreign x))
+                           (proto:keywordize-foreign x))
                          b) a))))
 
 (eval-always
   (defun assocify-results (results cols)
-    (let ((keys (mapcar (lambda (x) (keywordize-foreign x)) cols)))
+    (let ((keys (mapcar (lambda (x) (proto:keywordize-foreign x)) cols)))
       (mapcar
        (lambda (row)
          (pairlis keys row)) results))))
