@@ -90,7 +90,7 @@
   (cl-utilities:with-collectors (cols< from< where< other<)
     (dolist (query queries)
       (multiple-value-bind (cols specs)
-          (divide-on-true #'keywordp query)
+          (part-on-true #'keywordp query)
         (mapc #'cols< (cdr cols))
         (dolist (clause (proto:keyword-splitter specs))
           (case (car clause)
@@ -165,7 +165,7 @@
                ,query))))))
 
 (defun add-count (query)
-  (multiple-value-bind (cols mods) (divide-on-true #'keywordp query)
+  (multiple-value-bind (cols mods) (part-on-true #'keywordp query)
     `(,(car cols)
        ,(apply #'sql-count (cdr cols))
        ,@mods)))
