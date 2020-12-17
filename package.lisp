@@ -62,4 +62,5 @@
    #:colms
    #:get-table-columns
    #:table-symbol
-   #:take-one))
+   #:take-one
+   #:recent-mixin))

@@ -168,7 +168,7 @@
   (multiple-value-bind (cols mods) (part-on-true #'keywordp query)
     `(,(car cols)
        ,(apply #'sql-count (cdr cols))
-       ,@mods)))
+      ,@(nth-value 1 (extract-keywords '(:order-by) mods)))))
 
 (defun get-count (query)
   (with-a-database ()
@@ -190,6 +190,12 @@
 (defun order-by-mixin (orderspec)
   (when orderspec
     `(:order-by ,(sql-escape orderspec))))
+
+;;FIXME: Postgresql specific
+(defun recent-mixin (datecol agestring)
+  (when (and datecol (not-empty agestring))
+    `(:where ,(sql-< (sql-expression :string (format nil "age(~a)" datecol))
+                     (sql-expression :string (format nil "interval '~a'" agestring))))))
 
 (defun apply-car (data)
   (apply (symbol-function (car data)) (cdr data)))
