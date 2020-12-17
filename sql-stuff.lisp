@@ -167,7 +167,7 @@
 (defun add-count (query)
   (multiple-value-bind (cols mods) (part-on-true #'keywordp query)
     `(,(car cols)
-       ,(apply #'sql-count (cdr cols))
+       ,(sql-count (if (listp (second cols)) (car (second cols)) (second cols)))
       ,@(nth-value 1 (extract-keywords '(:order-by) mods)))))
 
 (defun get-count (query)
