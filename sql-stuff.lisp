@@ -187,9 +187,22 @@
   `(,@(when limit (list :limit (sql-escape limit)))
       ,@(when offset (list :offset (sql-escape offset)))))
 
-(defun order-by-mixin (orderspec)
-  (when orderspec
-    `(:order-by ,(sql-escape orderspec))))
+(defun order-by-mixin (&rest orderspecs)
+  (when orderspecs
+    `(:order-by
+      (,@(nreverse
+          (cl-utilities:collecting
+            (let ((qualifier nil))
+              (dolist (itm (nreverse orderspecs))
+                (if (member itm '(:desc :asc))
+                    (if qualifier
+                        (error ":desc or :asc in wrong place")
+                        (setf qualifier itm))
+                    (if qualifier
+                        (progn
+                          (cl-utilities:collect (list itm qualifier))
+                          (setf qualifier nil))
+                        (cl-utilities:collect itm)))))))))))
 
 ;;FIXME: Postgresql specific
 (defun recent-mixin (datecol agestring)
