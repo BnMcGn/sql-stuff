@@ -188,7 +188,7 @@
       ,@(when offset (list :offset (sql-escape offset)))))
 
 (defun order-by-mixin (&rest orderspecs)
-  (when orderspecs
+  (when (and orderspecs (every #'identity orderspecs))
     `(:order-by
       (,@(nreverse
           (cl-utilities:collecting
