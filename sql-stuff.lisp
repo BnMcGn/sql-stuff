@@ -134,6 +134,8 @@
                                         ;Defined as macro to keep clsql queries from executing immediately
 (defmacro merge-query (&rest queries)
   "Query fragments must start with a keyword."
+  ;;FIXME: this doesn't work, but better checking would be nice here
+  ;;(assert (every #'listp queries))
   `(let ((q (let ((*execute-query* nil))
               (apply #'%%merge-query
                      ,(cons 'list (mapcar #'%%unexecute-query queries))))))
