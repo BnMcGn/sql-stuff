@@ -131,7 +131,7 @@
         ,@(when where
                 (list :where (apply #'sql-and where))) ,@other)))
 
-                                        ;Defined as macro to keep clsql queries from executing immediately
+;;Defined as macro to keep clsql queries from executing immediately
 (defmacro merge-query (&rest queries)
   "Query fragments must start with a keyword."
   ;;FIXME: this doesn't work, but better checking would be nice here
@@ -142,6 +142,14 @@
      (if (and *execute-query* (query-code-p q))
          (apply-car q)
          q)))
+
+;;FIXME: broken
+(defmacro in-subquery (column subquery)
+  "Use a predefined query as a subquery"
+  ;;FIXME: should check that (car subquery) is a SELECT
+  `(sql-in
+    ,column
+    (apply #'sql-query (unexecuted ,subquery))))
 
 (defmacro def-query (name (&rest lambda-list) &body body)
   (with-gensyms (query)
