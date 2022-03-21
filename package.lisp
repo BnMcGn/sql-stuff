@@ -63,4 +63,5 @@
    #:get-table-columns
    #:table-symbol
    #:take-one
-   #:recent-mixin))
+   #:recent-mixin
+   #:in-subquery))
