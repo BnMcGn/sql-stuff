@@ -9,9 +9,9 @@
 
 (defmethod %fulltext-where (text cols (database (eql :postgresql)))
   (let ((clauses
-         (collecting
+         (cl-utilities:collecting
              (dolist (col (ensure-list cols))
-               (collect
+               (cl-utilities:collect
                    (sql-expression
                     :string
                     (format nil "to_tsvector(~a) @@ to_tsquery('~a')"

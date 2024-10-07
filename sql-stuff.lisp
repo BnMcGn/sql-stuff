@@ -477,7 +477,7 @@
    #'car
    (query-marker
     (let ((table (dolist (col (ensure-list cols))
-                   (awhen (table-from-attribute-obj col)
+                   (alexandria:when-let ((it (table-from-attribute-obj col)))
                      (return it)))))
       (assert table)
       (merge-query
